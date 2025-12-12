@@ -2,7 +2,7 @@
 Demo project of custom post-processing effect and shader for the Stride Game Engine with ready-to-use and configurable options in Game studio
 
 
-https://github.com/user-attachments/assets/334caa86-1124-42c5-bc7f-a272f50a2c7b
+https://github.com/user-attachments/assets/1a69c13e-b835-4d54-8587-45554cabdc4c
 
 
 Original shader [here](https://www.shadertoy.com/view/wllBDM),
