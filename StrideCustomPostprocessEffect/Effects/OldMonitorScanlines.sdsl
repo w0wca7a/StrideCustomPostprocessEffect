@@ -1,0 +1,85 @@
+// Author: devrique.
+// Code: https://www.shadertoy.com/view/wllBDM
+// Name: Old Monitor Scanlines.
+// Description: Screen scanlines, like some kind of retro monitor.
+//              I got the inspiration to do it playing Stay. :)
+shader OldMonitorScanlines : ImageEffectShader
+{
+    bool fisheye = false; //add rounding in the edges
+    // Set to 0.0 to stop animation.
+    // Only integer numbers with float format, or else the animation cuts!
+    float scanSpeedAdd = 6.0f;
+    float iTime; // we must use Services.GetService<IGame>().UpdateTime becouse Global.Time will not work
+    // Change this value to change scanline size (> = smaller lines).
+    float lineCut = 0.1f;
+
+    // Reduce 'anaglyphIntensity' value to reduce eye stress.
+    // Adding this two values should result in 1.0.
+    float whiteIntensity = 0.8f;
+    float anaglyphIntensity = 0.5f;
+
+    // Anaglyph colors.
+    float3 col_r = float3(0.0f, 1.0f, 1.0f);
+    float3 col_l = float3(1.0f, 0.0f, 0.0f);
+
+    stage override float4 Shading()
+    {   
+        // Normalized pixel coordinates (from 0 to 1).
+        float2 uv = streams.TexCoord;
+        float2 uv_right = float2(uv.x + 0.01, uv.y + 0.01);
+        float2 uv_left = float2(uv.x - 0.01, uv.y - 0.01);
+
+        // Black screen.
+        float3 col = float3(0.0, 0.0, 0.0); // ve3(0.0) in orig
+    
+        // Measure speed.
+        float scanSpeed = (frac(iTime) * 2.5 / 40.0) * scanSpeedAdd;    // fract in orig
+    
+        // Generate scanlines.
+        float3 scanlines = float3(1.0, 1.0, 1.0) * abs(cos((uv.y + scanSpeed) * 100.0)) - lineCut;
+    
+        // Generate anaglyph scanlines.
+        float3 scanlines_right = col_r * abs(cos((uv_right.y + scanSpeed) * 100.0)) - lineCut;
+        float3 scanlines_left = col_l * abs(cos((uv_left.y + scanSpeed) * 100.0)) - lineCut;
+    
+        // First try; a strange mess.
+        //vec3 scanlines = cos(cos(sqrt(uv.y)*tan(iTime / 10000.0) * 100.0 * 10.0) * vec3(1.0) * 100.0);
+    
+        col = smoothstep(0.1, 0.7, scanlines * whiteIntensity)
+            + smoothstep(0.1, 0.7, scanlines_right * anaglyphIntensity)
+            + smoothstep(0.1, 0.7, scanlines_left * anaglyphIntensity);
+    
+        // Deform test (WIP, thanks to 'ddoodm' for its Simple Fisheye Distortion!).
+        float deformVal;
+        if(fisheye){ deformVal = 2.5; }
+        else { deformVal = 0; }
+        float2 eyefishuv = (uv - 0.5) * deformVal;
+        float deform = (1.0 - eyefishuv.y*eyefishuv.y) * 0.02 * eyefishuv.x;
+        //deform = 0.0;
+    
+        // Add texture to visualize better the effect.
+        //float4 texture1 = texture(iChannel0, float2(uv.x - deform*0.95, uv.y));
+        float4 texture0 = Texture0.Sample(PointSampler, float2(uv.x - deform*0.95, uv.y));
+            
+        // Add vignette effect.
+        float bottomRight = pow(uv.x, uv.y * 100.0);
+        float topRight = pow(uv.x, (1.0 - uv.y) * 100.0);
+        float bottomLeft = pow(1.0 - uv.x, uv.y * 100.0);
+        float topLeft = pow(1.0 - uv.x, (1.0 - uv.y) * 100.0);
+    
+        float screenForm = bottomRight
+            + bottomLeft
+            + topRight
+            + topLeft;
+
+        // Invert screenForm color.
+        float3 col2 = 1.0-float3(screenForm, screenForm, screenForm);
+    
+        // Output to screen.
+        // Invert last 0.1 and 1.0 positions for image processing.
+        float4 fragColor = texture0 + float4((smoothstep(0.1, 0.9, col) * 0.1), 1.0);
+        if(fisheye)
+        fragColor = float4(fragColor.rgb * col2, fragColor.a);    
+        return fragColor;
+    }
+};
